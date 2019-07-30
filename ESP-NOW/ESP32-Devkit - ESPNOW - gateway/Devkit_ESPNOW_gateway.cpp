@@ -12,6 +12,7 @@
    1a) ESP-NOW communication - https://github.com/HarringayMakerSpace/ESP-Now
    1b) - https://navody.arduino-shop.cz/navody-k-produktum/bezdratova-komunikace-esp-now-s-esp32.html
    1c) - https://github.com/SensorsIot/ESP-Now-Tests
+   1d) - https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/ESPNow
    3)  Deep-sleep usage - https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
    4)  DHT sensor - https://github.com/adafruit/DHT-sensor-library/blob/master/examples/DHTtester/DHTtester.ino
 */
@@ -279,7 +280,8 @@ void InitESPNow() {
   esp_now_register_recv_cb(OnDataRecieved);
 }
 
-/* Callback when data is sent from Master to Slave */
+/* Callback when data is sent from Master to Slave 
+  (this part was inspired from project mentioned under number 1d) in header)*/
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -289,7 +291,7 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 /* Callback for processing recieved data 
-  (this part was inspired from project mentioned under number 1a) in header) */
+  (this part was inspired from project mentioned under number 1d) in header) */
 void OnDataRecieved(const uint8_t *mac, const uint8_t *data, int len) {
  for (int ii = 0; ii < 6; ++ii ) {
     slaves[0].peer_addr[ii] = (uint8_t) mac[ii];
