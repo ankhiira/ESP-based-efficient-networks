@@ -23,8 +23,8 @@ This repository deals with construction of three star network topologies based o
 * WeMos WiFi and Bluetooth Battery - DHT11
 
 # Topology 2 sensors (LoRa)
+* LILYGO TTGO LoRa - gateway
 * LILYGO TTGO LoRa - DHT11
-* LILYGO TTGO LoRa - DHT11
+* LILYGO TTGO LoRa - DHT22
 * LILYGO TTGO LoRa - MH-RD rain module with YL-83
-* LILYGO TTGO LoRa - DHT11
-* LILYGO TTGO LoRa - DHT11
+* LILYGO TTGO LoRa - light module with LDR 
