@@ -12,7 +12,6 @@
    1a) ESP-NOW communication - https://github.com/HarringayMakerSpace/ESP-Now
    1c) - https://github.com/SensorsIot/ESP-Now-Tests
    1d) - https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/ESPNow
-   3)  Deep-sleep usage - https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
    4)  DHT sensor - https://github.com/adafruit/DHT-sensor-library/blob/master/examples/DHTtester/DHTtester.ino
 */
 
@@ -38,11 +37,6 @@ DHT dht(dhtpin, DHTTYPE); // Initialize DHT sensor.
 #define NUMSLAVES 20
 esp_now_peer_info_t slaves[NUMSLAVES] = {};
 int SlaveCnt = 0;
-
-/* Definiton of deep sleep variables 
-  (this part was inspired from project mentioned under number 3) in header) */
-#define uS_TO_S_FACTOR 1000000  /* Conversion factor from micro seconds to seconds */
-#define TIME_TO_SLEEP  60       /* Time after ESP32 will go to sleep (in seconds) */
 
 //-------- Variables for WiFI and MQTT connection -----------
 const char* ssid = "SSID";
@@ -120,12 +114,6 @@ void setup() {
   /* Once ESPNow is successfully initialised, we will register for send callback to
     get the status of trasnmitted packet */
   esp_now_register_send_cb(OnDataSent);
-
-  /* Here we configure the wake up source,
-    then we set our ESP32 to wake up every TIME_TO_SLEEP seconds 
-    (this part was inspired from project mentioned under number 3) in header) */
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 }
 
 int timer;
