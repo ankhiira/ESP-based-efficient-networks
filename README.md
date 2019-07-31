@@ -31,4 +31,4 @@ This repository deals with construction of three star network topologies based o
 
 
 # Result on MQTT
-![alt text](https://raw.githubusercontent.com/username/projectname/branch/path/to/img.png)
+![alt text](https://github.com/4Gabby4/ESP-based-efficient-networks/blob/master/fig/topic_shiftr.png)
