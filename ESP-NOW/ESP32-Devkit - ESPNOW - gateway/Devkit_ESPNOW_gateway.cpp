@@ -10,7 +10,6 @@
   ESP-NOW doesn't seem to work again even after WiFi is disabled.
   Credits: this work was inspired on following projects
    1a) ESP-NOW communication - https://github.com/HarringayMakerSpace/ESP-Now
-   1b) - https://navody.arduino-shop.cz/navody-k-produktum/bezdratova-komunikace-esp-now-s-esp32.html
    1c) - https://github.com/SensorsIot/ESP-Now-Tests
    1d) - https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/ESPNow
    3)  Deep-sleep usage - https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
@@ -146,7 +145,7 @@ void loop() {
     wifiConnect();
     mqttConnect();
     renameTopic();
-    Serial.println("***Ready to restart***");
+    Serial.println("\n***Ready to restart***\n\n");
 
     /* After publishing values to MQTT gateway restarts itself */
     client.disconnect();
@@ -257,7 +256,6 @@ void renameTopic() {
       break;
     }
     
-    Serial.println();
     // if any of fields wasn't replace, we discard whole message
     if ((topic.substring(0) == "XXXXX") || (topic.substring(0) == "YYYYY") || (topic.substring(0) == "ZZZZZ")) {
       return;
@@ -281,7 +279,7 @@ void InitESPNow() {
 }
 
 /* Callback when data is sent from Master to Slave 
-  (this part was inspired from project mentioned under number 1d) in header)*/
+  (this part was inspired from project mentioned under number 1d) in header) */
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -396,7 +394,7 @@ void readSensor() {
   Serial.printf("***Own measured data***\n");
 
   /* Read temperature data and store them into struct vector */
-  vectorData.deviceType = 'h';
+  vectorData.deviceType = 'd';
   vectorData.type = 't';
   vectorData.value = dht.readTemperature();
   vectorData.devMac = deviceMac;
@@ -406,7 +404,7 @@ void readSensor() {
   vectorData.type, vectorData.value);
 
   /* Read humidity data and store them into struct vector */
-  vectorData.deviceType = 'h';
+  vectorData.deviceType = 'd';
   vectorData.type = 'h';
   vectorData.value = dht.readHumidity();
   vectorData.devMac = deviceMac;

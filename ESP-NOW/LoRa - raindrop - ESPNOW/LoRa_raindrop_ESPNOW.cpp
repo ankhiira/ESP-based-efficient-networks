@@ -6,19 +6,18 @@
   Description: This slave node periodically measure value of analog pin, from
   which we get current rain identification value, then send data via ESPNOW
   protocol to gateway and then it will put itself to deep sleep. After certain 
+  amount of time will ESP wake itself and start new cycle.
   Credits: this work was inspired on following projects
    1a) ESP-NOW communication - https://github.com/HarringayMakerSpace/ESP-Now
    1c) - https://github.com/SensorsIot/ESP-Now-Tests
    1d) - https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/ESPNow
    3)  Deep-sleep usage - https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
-   4)  DHT sensor - https://github.com/adafruit/DHT-sensor-library/blob/master/examples/DHTtester/DHTtester.ino
+   4)  Raindrop sensor - https://www.c-sharpcorner.com/article/finding-weather-conditions-using-rain-sensor-with-arduino-me/
 */
 
 #include <Adafruit_Sensor.h>
 #include <esp_now.h>
 #include <WiFi.h>
-
-#include <DHT.h>
 
 /* Definiton of deep sleep variables 
   (this part was inspired from project mentioned under number 3) in header) */
@@ -26,15 +25,18 @@
 #define TIME_TO_SLEEP  10       /* Time ESP32 will go to sleep (in seconds) */
 
 /* Variable for storing old measured value */
-RTC_DATA_ATTR float oldTemp = 0;
+RTC_DATA_ATTR int oldVal;
 
-/* DHT variables */
-#define DHTTYPE DHT11 // DHT 11
-const int dhtpin = 27;
-// Initialize DHT sensor.
-DHT dht(dhtpin, DHTTYPE);
+/* lowest and highest sensor readings:
+  (this part was inspired from project mentioned under number 4) in header) */
+const int sensorMin = 600;   // sensor minimum
+const int sensorMax = 5000;  // sensor maximum
 
-/* Variables for comparing difference in measured values*/
+// select the input pin for raindrop sensor
+int analogPin = 27; 
+String rainValue;
+
+/* Variables for comparing difference in measured values */
 int sensorReading;
 int range;
 
@@ -47,8 +49,9 @@ bool recieved = false;
 /* Function prototypes */
 void goToSleep();
 void InitESPNow();
-void readSensor(const char i);
-void sendData(const char i);
+void configDeviceAP();
+void readSensor();
+void sendData();
 void manageMaster();
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len);
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
@@ -57,7 +60,7 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 unsigned long setupMs, sendMs, delMs;
 
 /* Struct for storing recieved ESPNOW message 
- (this part was inspired from project mentioned under number 1a) in header) */
+  (this part was inspired from project mentioned under number 1a) in header) */
 struct __attribute__((packed)) SENSOR_DATA {
   char  deviceType;
   char  type;
@@ -67,34 +70,33 @@ struct __attribute__((packed)) SENSOR_DATA {
 void setup() {
   setupMs = millis();
   // initialize serial communication at 9600 baud:
-  Serial.begin(9600); Serial.println();
-  Serial.println("**ESPNow/LoRa/DHT11/Slave**");
+  Serial.begin(9600); Serial.println(); 
+  Serial.println("**ESPNow/LoRa/raindrop/Slave**");
 
   /* First we configure the wake up source
     We set our ESP32 to wake up every TIME_TO_SLEEP seconds 
-    this part was inspired from project mentioned under number 3) in header) */
+    (this part was inspired from project mentioned under number 3) in header) */
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 
-  /* Then we read sensor values */
-  dht.begin();
-  readSensor('t');
+  /* Then we read sensor value 
+   - read the sensor on analog A0: */
+  sensorReading = analogRead(analogPin);
+  /* map the sensor range (four options):
+    ex: 'long int map(long int, long int, long int, long int, long int)' */
+	range = map(sensorReading, sensorMin, sensorMax, 0, 3);
 
-  float diff = fabs(sensorData.value - oldTemp);
-
-  Serial.printf("new=%.2f ", sensorData.value);
-  Serial.printf("old=%.2f ", oldTemp);
-  Serial.printf("diff=%.2f \n\n",diff);
-    
-  /* If the difference between old and new value is smaller than
-    set threshold, put sensor back to sleep mode */
-  if (diff < 0.2) {
-    Serial.println("Difference is smaller than 0.2");
-    Serial.printf("old:%.2f new:%.2f\n", oldTemp, sensorData.value);
+  Serial.printf("new=%i ", range);
+  Serial.printf("old=%i ", oldVal);
+ 
+  /* If there is a difference between old and new 
+    value, put sensor back to sleep mode */
+  if (range == oldVal) {
+    Serial.println("- Old value didn't change");
     goToSleep();
   }
   // store new measured value into RTC memory
-  oldTemp = sensorData.value;
+  oldVal = range;
 
   /* If the value changed, we initialize ESP-NOW communication */
   //Set device in AP mode to begin with
@@ -112,9 +114,8 @@ void setup() {
   // here we set device type indikator
   sensorData.deviceType = 'l';
 
-  // than we send temperature and humidity data
-  sendData('t');
-  sendData('h');
+  // than we send rain value
+  sendData();
   //after that we start deep-sleep
   goToSleep();
 }
@@ -142,26 +143,33 @@ void InitESPNow() {
   }
 }
 
-/* Function to read sensor value */
-void readSensor(const char i) {
-  sensorData.value = 0;
-  if (i == 't') {
-    sensorData.type = 't';
-    sensorData.value = dht.readTemperature();
-  } else if (i == 'h') {
-    sensorData.type = 'h';
-    sensorData.value = dht.readHumidity();
+/* Function to read sensor value 
+  (this part was inspired from project mentioned under number 4) in header) */
+void readSensor() {
+  // range value:
+  switch (range) {
+    case 0:    // Sensor getting wet
+      Serial.println("Flood");
+      break;
+    case 1:    // Sensor getting wet
+      Serial.println("Rain Warning");
+      break;
+    case 2:    // Sensor dry - To shut this up delete the " Serial.println("Not Raining"); " below.
+      Serial.println("Not Raining");
+      break;
   }
+  sensorData.value = range;
+  sensorData.type = 'r';
 }
 
 /* Function to send sensor data to Master via ESPNOW */
-void sendData(const char i) {
-  readSensor(i);
+void sendData() {
+  readSensor();
   uint8_t bs[sizeof(sensorData)];
   memcpy(bs, &sensorData, sizeof(sensorData));
-  sendMs = millis();
   esp_err_t result = esp_now_send(NULL, bs, sizeof(sensorData)); // NULL means send to all peers
-  Serial.printf(" DeviceType=%c, ValueType=%c, Status=%.2f\n", 
+  sendMs = millis();
+  Serial.printf(" DeviceType=%c, ValueType=%c, Status=%0.2f\n", 
   sensorData.deviceType, sensorData.type, sensorData.value);
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
@@ -182,14 +190,13 @@ void sendData(const char i) {
   }
 }
 
-/* Function to add master to known peers 
-  (this part was inspired from project mentioned under number 1a) in header) */
+/* Function to add master to known peers */
 void manageMaster() {
   // Master not paired, attempt pair
   esp_err_t addStatus = esp_now_add_peer(remoteMac);
   if (addStatus == ESP_OK) {
     // Pair success
-    Serial.println("remote MAC added");
+    Serial.println("Pair success");
   } else if (addStatus == ESP_ERR_ESPNOW_NOT_INIT) {
     // How did we get so far!!
     Serial.println("ESPNOW Not Init");
@@ -206,8 +213,7 @@ void manageMaster() {
   }
 }
 
-/* Callback for processing recieved data from Master 
-  (this part was inspired from project mentioned under number 1d) in header) */
+/* Callback for processing recieved data from Master */
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   delMs = millis();
   recieved = true;
@@ -219,8 +225,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   Serial.println("");
 }
 
-/* Callback when data is sent from Slave to Master 
-  (this part was inspired from project mentioned under number 1d) in header) */
+/* Callback when data is sent from Slave to Master */
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
