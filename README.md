@@ -36,3 +36,6 @@ This repository deals with construction of three star network topologies based o
 # Graph of theoretical battery life of sensors
 The intervals in this graph indicate the frequency of sensor measurements (their wake-up frequency).
 ![alt text](https://github.com/4Gabby4/ESP-based-efficient-networks/blob/master/fig/graph_consumtion.png)
+
+As you can see from the graph, the best results got devices based on WeMos platform with ESP8266 chip, communicating via ESP-NOW. But I need to add, that those results highly depends on the platform, you choose. I also measured devices communicating via ESP-NOW based on LoRa platform (which includes ESP32 microchip) and the results were comparable with the devices communicating via BLE protocol.
+\You can also see that there isn't that big difference between measurement interval of one hour or one minute. This is caused by very long sleep intervals in proportion to really short wake up periods (in matter of milliseconds).
